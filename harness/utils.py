@@ -52,6 +52,68 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> List:
             env_names.append(env_name)
     return env_names
 
+def get_opam_switch_names(opam_source: str, env: dict = None) -> List:
+    """
+    Get list of opam environment names for given opam path
+
+    Args:
+        opam_source (str): Path to opam executable
+    Returns:
+        switch_names (list): List of opam switch names
+    """
+    # Get list of opam switches
+    try:
+        opam_switches = subprocess.run(
+            f"{opam_source} switch list".split(" "), check=True, capture_output=True, text=True, env=env,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+        print(f"Error stdout: {e.stdout}")
+        print(f"Error stderr: {e.stderr}")
+        raise e
+    output = opam_switches.stdout
+    lines = output.split("\n")
+    # Store switch names to list
+    switch_names = []
+    for line in lines:
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        if line == "":
+            continue
+        for indicator in ("→", "->", "*", "-"):
+            if line.startswith(indicator):
+                line = line[len(indicator):].strip()
+        if " " in line:
+            switch_name = line.split(" ")[0]
+            switch_names.append(switch_name)
+    return switch_names
+
+def get_docker_container_names(env: dict = None) -> List:
+    """
+    Get list of docker container names
+
+    Args:
+    Returns:
+        container_names (list): List of docker container names
+    """
+    # Get list of docker containers
+    try:
+        format_arg = "--format {{.Names}}"
+        docker_containers = subprocess.run(
+            f"docker ps -a {format_arg}".split(" "), check=True, capture_output=True, text=True, env=env,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+        print(f"Error stdout: {e.stdout}")
+        print(f"Error stderr: {e.stderr}")
+        raise e
+    output = docker_containers.stdout
+    lines = output.split("\n")
+    # Store container names to list
+    container_names = [line.strip() for line in lines if line.strip()]
+    return container_names
+
 
 def get_environment_yml(instance: Dict, env_name: str, save_path: str = None) -> str:
     """
@@ -206,6 +268,10 @@ def get_test_directives(instance: Dict) -> List:
     # For seq2seq code repos, testing command is fixed
     if instance["repo"] == "swe-bench/humaneval":
         return ["test.py"]
+
+    # For Coq repos, testing is fixed
+    if instance["repo"] in ("coq/coq", "HoTT/coq", "JasonGross/coq", "mit-plv/fiat-crypto", "JasonGross/fiat-crypto"):
+        return []
 
     # Get test directives from test patch and remove non-test files
     diff_pat = r"diff --git a/.* b/(.*)"
@@ -428,7 +494,7 @@ def has_attribute_or_import_error(log_before):
                 if target_word in line:
                     hits.append(line)
             return hits
-        
+
         # Get line with Attribute/Import error
         lines_1 = get_lines_with_word(log_before, 'attribute')
         lines_2 = get_lines_with_word(log_before, 'import')

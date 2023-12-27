@@ -379,6 +379,58 @@ MAP_VERSION_TO_INSTALL_PYDICOM.update({
     k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.11"}
     for k in ['2.4', '3.0']})
 
+MAP_VERSION_TO_INSTALL_COQ = {
+    }
+# bounds come from https://raw.githubusercontent.com/coq-community/docker-coq/master/images.yml
+# grep -A3 matrix: images.yml | grep 'matrix:\|base:\|coq:\|default:' | sed 's/^ *//g' | grep -v '^#' | tr '\n' '~' | sed 's/\(default:[^~]*\)~base:[^~]*\(~coq:\)/\1\2/g' | grep -o '\(base\|default\):[^~]*~coq:[^~]*' | sed 's/\(base\|default\): .//g; s/.~coq//g'
+MAP_VERSION_TO_INSTALL_COQ.update({
+    f"{k}{deps_only}": {
+        "ocaml": ocaml_version,
+        "packages": f"{k}" if not deps_only else "",
+        "deps_only_packages": f"{k}" if deps_only else "",
+    }
+    for major, minor, patch_upper_bound, ocaml_version
+    in [(8, 18, 0, "4.13.1"),
+        (8, 17, 1, "4.13.1"),
+        (8, 16, 1, "4.13.1"),
+        (8, 15, 2, "4.07.1"),
+        (8, 14, 1, "4.07.1"),
+        (8, 13, 2, "4.07.1"),
+        (8, 12, 2, "4.07.1+flambda"),
+        (8, 11, 2, "4.07.1+flambda"),
+        (8, 10, 2, "4.07.1+flambda"),
+        (8, 9, 1, "4.07.1+flambda"),
+        (8, 8, 2, "4.07.1+flambda"),
+        (8, 7, 2, "4.07.1+flambda"),
+        (8, 6, 1, "4.02.3"),
+        (8, 5, 3, "4.02.3")]
+    for k in [f"coq.{major}.{minor}.{patch}" for patch in range(patch_upper_bound + 1)]
+    for deps_only in ('', '--deps-only')
+})
+MAP_VERSION_TO_INSTALL_COQ.update({
+    f"{k}{deps_only}": {
+        "ocaml": "4.02.3",
+        "packages": f"{k}" if not deps_only else "",
+        "deps_only_packages": f"{k}" if deps_only else "",
+    }
+    for k in [f"coq.8.4{patch}" for patch in ["pl1", "pl2", "pl3", "pl4", ".5", ".6"]]
+    for deps_only in ('', '--deps-only')
+})
+
+MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD = {
+    f"{k}-make-{install_cmd}": dict(
+        install=f"make {install_cmd}",
+        **v
+    )
+    for k, v in MAP_VERSION_TO_INSTALL_COQ.items()
+    for install_cmd in ["selected-specific", "selected-specific-display"]
+}
+
+MAP_VERSION_TO_INSTALL_DOCKER_COQ = {
+    f"docker-coq.{k}": {}
+    for k in [f"8.{i}" for i in range(4, 19)]
+}
+
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
 
 # Constants - Task Instance Instllation Environment
@@ -404,6 +456,11 @@ MAP_VERSION_TO_INSTALL = {
     "sqlfluff/sqlfluff": MAP_VERSION_TO_INSTALL_SQLFLUFF,
     "swe-bench/humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
     "sympy/sympy": MAP_VERSION_TO_INSTALL_SYMPY,
+    "coq/coq": MAP_VERSION_TO_INSTALL_COQ,
+    "HoTT/coq": MAP_VERSION_TO_INSTALL_COQ,
+    "JasonGross/coq": MAP_VERSION_TO_INSTALL_COQ,
+    "mit-plv/fiat-crypto": MAP_VERSION_TO_INSTALL_DOCKER_COQ, # MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD
+    "JasonGross/fiat-crypto": MAP_VERSION_TO_INSTALL_DOCKER_COQ, # MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD
 }
 
 # Constants - Repository Specific Installation Instructions
@@ -411,6 +468,8 @@ MAP_REPO_TO_INSTALL = {}
 
 # Constants - Task Instance Test Frameworks
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
+TEST_COQ_COQ = "./configure -local && make && { make test-suite; make -C test-suite summary; }"
+TEST_FIAT_CRYPTO = "make -C /home/coq/workdir test-suite"
 MAP_REPO_TO_TEST_FRAMEWORK = {
     "astropy/astropy": TEST_PYTEST,
     "dbt-labs/dbt-core": TEST_PYTEST,
@@ -433,6 +492,11 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
     "sqlfluff/sqlfluff": TEST_PYTEST,
     "swe-bench/humaneval": "python",
     "sympy/sympy": "bin/test -C --verbose",
+    "coq/coq": TEST_COQ_COQ,
+    "HoTT/coq": TEST_COQ_COQ,
+    "JasonGross/coq": TEST_COQ_COQ,
+    "mit-plv/fiat-crypto": TEST_FIAT_CRYPTO,
+    "JasonGross/fiat-crypto": TEST_FIAT_CRYPTO,
 }
 
 # Constants - Task Instance Requirements File Paths

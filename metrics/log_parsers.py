@@ -141,6 +141,44 @@ def parse_log_sympy(log):
                 test_status_map[test] = TestStatus.PASSED.value
     return test_status_map
 
+def parse_log_coq_test_suite_summary(log: str) -> Dict:
+    """
+    Parser for test logs generated with Coq's `make -C test-suite summary`
+
+    Args:
+        log (str): log content
+    Returns:
+        dict: test case to test status mapping
+    """
+    test_status_map = {}
+    for line in log.split("\n"):
+        if line.strip().endswith("...Ok"):
+            test_case = line.strip()[:-len("...Ok")]
+            test_status_map[test_case] = TestStatus.PASSED.value
+        elif "...Error!" in line:
+            test_case = line.split("...Error!")[0].strip()
+            test_status_map[test_case] = TestStatus.FAILED.value
+    return test_status_map
+
+def parse_log_coq_fiat_crypto(log: str) -> Dict:
+    """
+    Parser for test logs generated for fiat-crypto
+
+    Args:
+        log (str): log content
+    Returns:
+        dict: test case to test status mapping
+    """
+    test_status_map = {}
+    for line in log.split("\n"):
+        if line.strip().endswith(" PASSED"):
+            test_case = line.strip()[:-len(" PASSED")]
+            test_status_map[test_case] = TestStatus.PASSED.value
+        elif line.strip().endswith(" FAILED"):
+            test_case = line.strip()[:-len(" FAILED")]
+            test_status_map[test_case] = TestStatus.FAILED.value
+    return test_status_map
+
 
 parse_log_astroid = parse_log_pytest
 parse_log_flask = parse_log_pytest
@@ -178,4 +216,9 @@ MAP_REPO_TO_PARSER = {
     "sqlfluff/sqlfluff": parse_log_sqlfluff,
     "sphinx-doc/sphinx": parse_log_sphinx,
     "sympy/sympy": parse_log_sympy,
+    "coq/coq": parse_log_coq_test_suite_summary,
+    "HoTT/coq": parse_log_coq_test_suite_summary,
+    "JasonGross/coq": parse_log_coq_test_suite_summary,
+    "mit-plv/fiat-crypto": parse_log_coq_fiat_crypto,
+    "JasonGross/fiat-crypto": parse_log_coq_fiat_crypto,
 }
