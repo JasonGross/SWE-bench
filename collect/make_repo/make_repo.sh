@@ -5,7 +5,7 @@ REPO_TARGET=$1
 gh repo view "$REPO_TARGET" > /dev/null || exit 1
 
 # Set the organization and repository names
-ORG_NAME="swe-bench"
+ORG_NAME="JasonGross" # "swe-bench"
 NEW_REPO_NAME="${REPO_TARGET//\//__}"
 
 # Check if the new repository already exists
