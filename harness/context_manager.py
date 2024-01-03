@@ -178,14 +178,12 @@ class TestbedContextManager:
         # Remove None versions, versions not in MAP_VERSION_TO_INSTALL
         self._custom_restraints()
 
-    def __enter__(self):
-        """
-        Set up testbed (conda environments, git repositories)
-        """
+    def __setup_conda(self, shellenv, path_activate, exec_cmd, env_list):
         # If path_conda not provided, create temporary miniconda3 installation
         is_osx_64 = False
         if platform.system() == "Darwin" and platform.machine() == "arm64":
             is_osx_64 = True
+
         if self.temp_dir_conda is not None:
             # Set up the paths for Miniconda
             self.path_conda = os.path.join(self.path_conda, "miniconda3")
@@ -224,8 +222,25 @@ class TestbedContextManager:
 
             # Clean up the installer
             os.remove(miniconda_sh)
-        logger_testbed.info(f"[Testbed] Using conda path {self.path_conda}")
 
+        if not hasattr(self, 'has_set_up_conda'):
+            self.has_set_up_conda = True
+            logger_testbed.info(f"[Testbed] Using conda path {self.path_conda}")
+
+            # Set up conda executables, get existing environments
+            self.path_conda = os.path.abspath(self.path_conda)
+            conda_bin_path = os.path.join(self.path_conda, "bin")
+            shellenv["PATH"] = conda_bin_path + os.pathsep + shellenv["PATH"]
+            self.exec.subprocess_args["env"] = shellenv
+
+            path_activate = os.path.join(self.path_conda, "bin", "activate")
+            exec_type = "mamba" if "mamba" in self.path_conda else "conda"
+            exec_cmd = os.path.join(self.path_conda, "bin", exec_type)
+            env_list = get_conda_env_names(exec_cmd, shellenv)
+        return shellenv, path_activate, exec_cmd, env_list
+
+
+    def __setup_opam(self, shellenv, opam_exec_cmd, switch_list):
         if self.temp_dir_opam is not None:
             # Set up the paths for opam
             opam_install_sh = os.path.join(self.path_opam, "opam_install.sh")
@@ -275,34 +290,33 @@ class TestbedContextManager:
 
             # Clean up the installer
             os.remove(opam_install_sh)
-        logger_testbed.info(f"[Testbed] Using opam path {self.path_opam}")
+        if not hasattr(self, 'has_set_up_opam'):
+            self.has_set_up_opam = True
+            logger_testbed.info(f"[Testbed] Using opam path {self.path_opam}")
 
-        # Set up conda executables, get existing environments
-        self.path_conda = os.path.abspath(self.path_conda)
-        conda_bin_path = os.path.join(self.path_conda, "bin")
+            # Set up opam executables, get existing environments
+            self.path_opam = os.path.abspath(self.path_opam)
+            opam_bin_path = os.path.dirname(self.path_opam)
+            shellenv["PATH"] = opam_bin_path + os.pathsep + shellenv["PATH"]
+            if self.path_opam_root is not None: shellenv["OPAMROOT"] = self.path_opam_root = os.path.abspath(self.path_opam_root)
+            self.exec.subprocess_args["env"] = shellenv
+
+            opam_exec_cmd = self.path_opam
+            switch_list = get_opam_switch_names(self.path_opam, shellenv)
+        return shellenv, opam_exec_cmd, switch_list
+
+    def __enter__(self):
+        """
+        Set up testbed (conda environments, git repositories)
+        """
         shellenv = os.environ.copy()
-        shellenv["PATH"] = conda_bin_path + os.pathsep + shellenv["PATH"]
         self.exec.subprocess_args["env"] = shellenv
-
-        path_activate = os.path.join(self.path_conda, "bin", "activate")
-        exec_type = "mamba" if "mamba" in self.path_conda else "conda"
-        exec_cmd = os.path.join(self.path_conda, "bin", exec_type)
-        env_list = get_conda_env_names(exec_cmd, shellenv)
-
-        # Set up opam executables, get existing environments
-        self.path_opam = os.path.abspath(self.path_opam)
-        opam_bin_path = os.path.dirname(self.path_opam)
-        shellenv = os.environ.copy()
-        shellenv["PATH"] = opam_bin_path + os.pathsep + shellenv["PATH"]
-        if self.path_opam_root is not None: shellenv["OPAMROOT"] = self.path_opam_root = os.path.abspath(self.path_opam_root)
-        self.exec.subprocess_args["env"] = shellenv
-
-        opam_exec_cmd = self.path_opam
-        switch_list = get_opam_switch_names(self.path_opam, shellenv)
+        path_activate, exec_cmd, env_list = None, None, None
+        opam_exec_cmd, switch_list = None, None
 
         # Set up docker
         self.docker_container_name = None
-        container_list = get_docker_container_names(shellenv)
+        container_list = None
 
         # Set up testbed (environment, github repo) for each repo
         for repo, version_to_setup_ref in self.setup_refs.items():
@@ -338,6 +352,7 @@ class TestbedContextManager:
 
                 # Skip if conda environment already exists
                 if version.startswith("coq."):
+                    shellenv, opam_exec_cmd, switch_list = self.__setup_opam(shellenv, opam_exec_cmd, switch_list)
                     if env_name in switch_list:
                         logger_testbed.info(
                             f"[Testbed] Environment {env_name} already exists in opam; skipping"
@@ -345,6 +360,7 @@ class TestbedContextManager:
                         continue
                 elif version.startswith("docker-coq."):
                     self.docker_container_name = env_name
+                    if container_list is None: container_list = get_docker_container_names(shellenv)
                     if env_name in container_list:
                         logger_testbed.info(
                             f"[Testbed] Environment {env_name} already exists as a docker container; removing"
@@ -355,6 +371,7 @@ class TestbedContextManager:
                         )
                         self.exec(cmd.split(" "))
                 else:
+                    shellenv, path_activate, exec_cmd, env_list = self.__setup_conda(shellenv, path_activate, exec_cmd, env_list)
                     if env_name in env_list:
                         logger_testbed.info(
                             f"[Testbed] Environment {env_name} already exists; skipping"

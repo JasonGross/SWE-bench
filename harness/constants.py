@@ -417,19 +417,19 @@ MAP_VERSION_TO_INSTALL_COQ.update({
     for deps_only in ('', '--deps-only')
 })
 
-MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD = {
+MAP_VERSION_TO_INSTALL_COQ.update({
     f"{k}-make-{install_cmd}": dict(
         install=f"make {install_cmd}",
         **v
     )
     for k, v in MAP_VERSION_TO_INSTALL_COQ.items()
     for install_cmd in ["selected-specific", "selected-specific-display"]
-}
+})
 
-MAP_VERSION_TO_INSTALL_DOCKER_COQ = {
+MAP_VERSION_TO_INSTALL_COQ.update({
     f"docker-coq.{k}": {}
     for k in [f"8.{i}" for i in range(4, 19)]
-}
+})
 
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
 
@@ -459,8 +459,8 @@ MAP_VERSION_TO_INSTALL = {
     "coq/coq": MAP_VERSION_TO_INSTALL_COQ,
     "HoTT/coq": MAP_VERSION_TO_INSTALL_COQ,
     "JasonGross/coq": MAP_VERSION_TO_INSTALL_COQ,
-    "mit-plv/fiat-crypto": MAP_VERSION_TO_INSTALL_DOCKER_COQ, # MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD
-    "JasonGross/fiat-crypto": MAP_VERSION_TO_INSTALL_DOCKER_COQ, # MAP_VERSION_TO_INSTALL_COQ_MAKE_CMD
+    "mit-plv/fiat-crypto": MAP_VERSION_TO_INSTALL_COQ,
+    "JasonGross/fiat-crypto": MAP_VERSION_TO_INSTALL_COQ,
 }
 
 # Constants - Repository Specific Installation Instructions
