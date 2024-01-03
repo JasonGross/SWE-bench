@@ -270,7 +270,12 @@ def get_test_directives(instance: Dict) -> List:
         return ["test.py"]
 
     # For Coq repos, testing is fixed
-    if instance["repo"] in ("coq/coq", "HoTT/coq", "JasonGross/coq", "mit-plv/fiat-crypto", "JasonGross/fiat-crypto"):
+    if instance["repo"] in ("mit-plv/fiat-crypto", "JasonGross/fiat-crypto"):
+        if instance["version"].startswith("docker-coq."):
+            return ["-C", "/home/coq/workdir", "test-suite"]
+        else:
+            return ["test-suite"]
+    if instance["repo"] in ("coq/coq", "HoTT/coq", "JasonGross/coq"):
         return []
 
     # Get test directives from test patch and remove non-test files

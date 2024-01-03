@@ -469,7 +469,7 @@ MAP_REPO_TO_INSTALL = {}
 # Constants - Task Instance Test Frameworks
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 TEST_COQ_COQ = "./configure -local && make && { make test-suite; make -C test-suite summary; }"
-TEST_FIAT_CRYPTO = "make -C /home/coq/workdir test-suite"
+TEST_FIAT_CRYPTO = "make"
 MAP_REPO_TO_TEST_FRAMEWORK = {
     "astropy/astropy": TEST_PYTEST,
     "dbt-labs/dbt-core": TEST_PYTEST,

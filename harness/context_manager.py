@@ -314,6 +314,9 @@ class TestbedContextManager:
         path_activate, exec_cmd, env_list = None, None, None
         opam_exec_cmd, switch_list = None, None
 
+        # Set up empty opam
+        self.path_opam_root = None
+
         # Set up docker
         self.docker_container_name = None
         container_list = None
