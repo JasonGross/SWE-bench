@@ -605,9 +605,12 @@ class TaskEnvContextManager:
         self.cwd = os.getcwd()
 
         shellenv = os.environ.copy()
-        condabinpath = os.path.join(self.conda_path, "bin")
-        opambinpath = os.path.dirname(self.opam_path)
-        shellenv["PATH"] = condabinpath + os.pathsep + opambinpath + os.pathsep + shellenv["PATH"]
+        if self.opam_path is not None:
+            opambinpath = os.path.dirname(self.opam_path)
+            shellenv["PATH"] = opambinpath + os.pathsep + shellenv["PATH"]
+        if self.conda_path is not None:
+            condabinpath = os.path.join(self.conda_path, "bin")
+            shellenv["PATH"] = condabinpath + os.pathsep + shellenv["PATH"]
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
