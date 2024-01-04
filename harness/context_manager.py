@@ -594,7 +594,7 @@ class TaskEnvContextManager:
             )
         if self.instance["version"].startswith("coq."):
             root_arg = f"--root={self.opam_root}" if self.opam_root else ""
-            cmd_activate = f"{self.opam_path} switch {root_arg} {self.switch} && eval $({self.opam_path} env) && echo 'activate successful'"
+            cmd_activate = f"{self.opam_path} switch {root_arg} {self.switch} && eval $({self.opam_path} env {root_arg}) && echo 'activate successful'"
             self.cmd_activate_then = lambda cmd: f"{cmd_activate} && {cmd}"
         elif self.instance["version"].startswith("docker-coq."):
             self.cmd_activate_then = lambda cmd: f"docker run -v .:/home/coq/workdir -it coqorg/coq:{self.instance['version'][len('docker-coq.'):]} {cmd}"
