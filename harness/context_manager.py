@@ -184,47 +184,47 @@ class TestbedContextManager:
         if platform.system() == "Darwin" and platform.machine() == "arm64":
             is_osx_64 = True
 
-        if self.temp_dir_conda is not None:
-            # Set up the paths for Miniconda
-            self.path_conda = os.path.join(self.path_conda, "miniconda3")
-            os.mkdir(self.path_conda)
-            miniconda_sh = os.path.join(self.path_conda, "miniconda.sh")
-            logger_testbed.info(
-                f"No conda path provided, creating temporary install in {self.path_conda}..."
-            )
-
-            # Download Miniconda installer
-            if platform.system() == "Darwin":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
-                if is_osx_64:
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
-            elif platform.system() == "Linux":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-                if platform.machine() == "aarch64":
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
-            else:
-                raise ValueError("Unknown computer platform " + platform.system())
-            download_cmd = [
-                "wget",
-                cmd_line_install_link,
-                "-O",
-                miniconda_sh,
-            ]
-            self.exec(download_cmd)
-
-            # Install Miniconda
-            install_cmd = ["bash", miniconda_sh, "-b", "-u", "-p", self.path_conda]
-            self.exec(install_cmd)
-            if is_osx_64:
-                condabin = os.path.join(self.path_conda, "bin", "conda")
-                config_cmd = [condabin, "config", "--env", "--set", "subdir", "osx-64"]
-                self.exec(config_cmd)
-
-            # Clean up the installer
-            os.remove(miniconda_sh)
-
         if not hasattr(self, 'has_set_up_conda'):
             self.has_set_up_conda = True
+            if self.temp_dir_conda is not None:
+                # Set up the paths for Miniconda
+                self.path_conda = os.path.join(self.path_conda, "miniconda3")
+                os.mkdir(self.path_conda)
+                miniconda_sh = os.path.join(self.path_conda, "miniconda.sh")
+                logger_testbed.info(
+                    f"No conda path provided, creating temporary install in {self.path_conda}..."
+                )
+
+                # Download Miniconda installer
+                if platform.system() == "Darwin":
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
+                    if is_osx_64:
+                        cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
+                elif platform.system() == "Linux":
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+                    if platform.machine() == "aarch64":
+                        cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
+                else:
+                    raise ValueError("Unknown computer platform " + platform.system())
+                download_cmd = [
+                    "wget",
+                    cmd_line_install_link,
+                    "-O",
+                    miniconda_sh,
+                ]
+                self.exec(download_cmd)
+
+                # Install Miniconda
+                install_cmd = ["bash", miniconda_sh, "-b", "-u", "-p", self.path_conda]
+                self.exec(install_cmd)
+                if is_osx_64:
+                    condabin = os.path.join(self.path_conda, "bin", "conda")
+                    config_cmd = [condabin, "config", "--env", "--set", "subdir", "osx-64"]
+                    self.exec(config_cmd)
+
+                # Clean up the installer
+                os.remove(miniconda_sh)
+
             logger_testbed.info(f"[Testbed] Using conda path {self.path_conda}")
 
             # Set up conda executables, get existing environments
@@ -241,57 +241,58 @@ class TestbedContextManager:
 
 
     def __setup_opam(self, shellenv, opam_exec_cmd, switch_list):
-        if self.temp_dir_opam is not None:
-            # Set up the paths for opam
-            opam_install_sh = os.path.join(self.path_opam, "opam_install.sh")
-            logger_testbed.info(
-                f"No opam path provided, creating temporary install in {self.path_opam}..."
-            )
-
-            # Download opam installer
-            cmd_line_install_link = "https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh"
-            download_cmd = [
-                "wget",
-                cmd_line_install_link,
-                "-O",
-                opam_install_sh,
-            ]
-            self.exec(download_cmd)
-
-            self.path_opam_root = os.path.join(self.path_opam, ".opam")
-            os.mkdir(self.path_opam_root)
-
-            self.path_opam = os.path.join(self.path_opam, "bin")
-            os.mkdir(self.path_opam)
-
-            # Install opam
-            install_cmd = ["bash", opam_install_sh, "--download-only"]
-            self.exec(install_cmd)
-            # run a second time to get the name of the binary
-            opam_bin = self.exec(install_cmd).stdout
-            opam_match = re.search(r'Found opam binary in (.*) \.\.\.', opam_bin.strip(' \n').split('\n')[0])
-            if not opam_match or not opam_match.groups(): raise Exception(f"Coult not find opam binary in {opam_bin!r}")
-            temp_path_opam = opam_match.groups()[0]
-            shutil.copy(temp_path_opam, os.path.join(self.path_opam, 'opam'))
-            self.path_opam = os.path.join(self.path_opam, 'opam')
-
-            # mark opam as executable
-            st = os.stat(self.path_opam)
-            os.chmod(self.path_opam, st.st_mode | stat.S_IEXEC)
-            opam_init_cmd = [
-                self.path_opam,
-                "init",
-                "--bare",
-                "--no-setup",
-                "--root",
-                self.path_opam_root
-            ]
-            self.exec(opam_init_cmd)
-
-            # Clean up the installer
-            os.remove(opam_install_sh)
         if not hasattr(self, 'has_set_up_opam'):
             self.has_set_up_opam = True
+            if self.temp_dir_opam is not None:
+                # Set up the paths for opam
+                opam_install_sh = os.path.join(self.path_opam, "opam_install.sh")
+                logger_testbed.info(
+                    f"No opam path provided, creating temporary install in {self.path_opam}..."
+                )
+
+                # Download opam installer
+                cmd_line_install_link = "https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh"
+                download_cmd = [
+                    "wget",
+                    cmd_line_install_link,
+                    "-O",
+                    opam_install_sh,
+                ]
+                self.exec(download_cmd)
+
+                self.path_opam_root = os.path.join(self.path_opam, ".opam")
+                os.mkdir(self.path_opam_root)
+
+                self.path_opam = os.path.join(self.path_opam, "bin")
+                os.mkdir(self.path_opam)
+
+                # Install opam
+                install_cmd = ["bash", opam_install_sh, "--download-only"]
+                self.exec(install_cmd)
+                # run a second time to get the name of the binary
+                opam_bin = self.exec(install_cmd).stdout
+                opam_match = re.search(r'Found opam binary in (.*) \.\.\.', opam_bin.strip(' \n').split('\n')[0])
+                if not opam_match or not opam_match.groups(): raise Exception(f"Coult not find opam binary in {opam_bin!r}")
+                temp_path_opam = opam_match.groups()[0]
+                shutil.copy(temp_path_opam, os.path.join(self.path_opam, 'opam'))
+                self.path_opam = os.path.join(self.path_opam, 'opam')
+
+                # mark opam as executable
+                st = os.stat(self.path_opam)
+                os.chmod(self.path_opam, st.st_mode | stat.S_IEXEC)
+                opam_init_cmd = [
+                    self.path_opam,
+                    "init",
+                    "--bare",
+                    "--no-setup",
+                    "--root",
+                    self.path_opam_root
+                ]
+                self.exec(opam_init_cmd)
+
+                # Clean up the installer
+                os.remove(opam_install_sh)
+
             logger_testbed.info(f"[Testbed] Using opam path {self.path_opam}")
 
             # Set up opam executables, get existing environments
